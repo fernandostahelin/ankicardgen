@@ -1,76 +1,176 @@
 import os
 import pymupdf
 import pathlib
+import logging
+from datetime import datetime
 
-fname = "/Users/fernandostahelin/Applications/AutoVergara/data/I'll Have You Know - O que significa esta expressão.pdf"
+
+class CustomFormatter(logging.Formatter):
+    def formatTime(self, record, datefmt=None):
+        dt = datetime.fromtimestamp(record.created)
+        if datefmt:
+            s = dt.strftime(datefmt)
+        else:
+            t = dt.strftime("%Y-%m-%d %H:%M:%S")
+            s = f"{t}.{dt.microsecond:06d}"
+        return s
+
+
+def set_logger(log_path):
+    global logger
+    print("\nInitializing log service...")
+    try:
+
+        log_folder = log_path
+        print("logs will be saved at: {}\n".format(str(log_folder)))
+        if not os.path.exists(log_folder):
+            os.makedirs(log_folder)
+
+        log_file = os.path.join(
+            log_folder,
+            f'auto_vergara_{datetime.now().strftime("%Y-%m-%d_%Hh:%Mm:%Ss:%f")}.log',
+        )
+
+        logger = logging.getLogger()
+        logger.setLevel(logging.INFO)
+
+        formatter = CustomFormatter(
+            "%(asctime)s %(levelname)s:%(message)s", "%Y-%m-%d %H:%M:%S.%f"
+        )
+
+        # create a console handler for logging
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.DEBUG)
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+
+        # create a file handler for logging
+        file_handler = logging.FileHandler(log_file)
+        file_handler.setLevel(logging.INFO)
+        file_handler.setFormatter(formatter)
+
+        logger.addHandler(file_handler)
+        logger.info("Logger service initialized sucessfully.")
+        return logger
+    except Exception as e:
+        print("Logging Initialization failed.")
+        print(str(e))
+
 
 def flags_decomposer(flags):
     """Make font flags human readable."""
     l = []
-    if flags & 2 ** 0:
+    if flags & 2**0:
         l.append("superscript")
-    if flags & 2 ** 1:
+    if flags & 2**1:
         l.append("italic")
-    if flags & 2 ** 2:
+    if flags & 2**2:
         l.append("serifed")
     else:
         l.append("sans")
-    if flags & 2 ** 3:
+    if flags & 2**3:
         l.append("monospaced")
     else:
         l.append("proportional")
-    if flags & 2 ** 4:
+    if flags & 2**4:
         l.append("bold")
     return ", ".join(l)
 
 
-def extract_text():
+def extract_text(pdf_file):
+    logger.info("Extracting text: {}".format(str(pdf_file)))
     sentences = {}
-    english_styles_list = ["bold","italic"]
-    with pymupdf.open(fname) as doc:
-        for page in doc:
-            text_blocks = page.get_text("dict", flags=pymupdf.TEXTFLAGS_TEXT)["blocks"]
-
-            for block in text_blocks:
-                for line in block["lines"]:
-                # print(line)
-                    for span in line["spans"]:
-                    #  print("")
-                        font_properties = "%s" % (
-                            flags_decomposer(span["flags"]),  # readable font flags
-                        )
-                        for style in english_styles_list:
-                            if style not in font_properties:
-                                return "not"
+    english_styles_list = ["bold", "italic"]
+    english_phrase_counter = 0
+    try:
+        with pymupdf.open(pdf_file) as doc:
+            extracted_text = {}
+            for page in doc:
+                text_blocks = page.get_text("dict", flags=pymupdf.TEXTFLAGS_TEXT)[
+                    "blocks"
+                ]
+                for block in text_blocks:
+                    for line in block["lines"]:
+                        for span in line["spans"]:
+                            style = flags_decomposer(span["flags"])
+                            #print(span)
+                            if span.get("text") == ' ':
+                               print("------------------------!")
                             else:
-                                return "\nText: '%s'" % span["text"]  # simple print of text
-                                return font_properties
+                                print("frase: " + span.get("text") +  "style: " + style)
+                           
+
+        logger.info("Text extracted. Closing file...")
+        return extracted_text
+    except Exception as e:
+        logger.error("Error {} during text extraction.".format(str(e)))
 
 
-def save_file():
-    #save txt file in a direcotry using the same file name
+def write_file(text, folder):
+    logger.info("Starting writing process...")
+
+    try:
+        logger.info("Files stored.")
+        pass
+    except Exception as e:
+        logger.error("Error {} during file writing.".format(str(e)))
+    # save txt file in a direcotry using the same file name
     # write as a binary file to support non-ASCII characters
-    #pathlib.Path(fname + ".txt").write_bytes(text.encode())
-    pass
+    # pathlib.Path(fname + ".txt").write_bytes(text.encode())
 
-def contact_files():
-    #concatenate all the txt files into one in order to effectvely import into anki
-    for file in file_path:
-        if file.endswith(".txt"):
-            #concatenas
 
-def list_all_pdfs(file_path):
-    list_pdfs = []
-    #list all pdf files inside the path, return
-    return list_pdfs
+def concatenate_files(destination_folder):
+    logger.info("Starting concat process...")
+    try:
+        # concatenate all the txt files into one in order to effectvely import into anki
+        for file in destination_folder:
+            if file.endswith(".txt"):
+                # concatenar
+                pass
+        logger.info("concat successful.")
+
+    except Exception as e:
+        logger.error("Error {} during file concat.".format(str(e)))
+
+
+def list_all_pdfs(pdf_folder):
+    logger.info("Listing all pdf files...")
+    try:
+        list_pdfs = []
+        logger.info("Searching for PDFs inside: {}".format(pdf_folder))
+        # list all pdf files inside the pdf folder, return
+        for root, dirs, filenames in os.walk(pdf_folder):
+            for filename in filenames:
+                if str(filename).endswith(".pdf"):
+                    list_pdfs.append(os.path.join(root, filename))
+                    logger.info("{} found!".format(str(filename)))
+
+        message = "{} pdf files found in folder.".format(str(len(list_pdfs)))
+        logger.info(message)
+        return list_pdfs
+    except Exception as e:
+        logger.error("Error {} while listing pdf files.".format(str(e)))
+
 
 def main():
     try:
-        for file in list_pdfs:
-            extract_text()
-            save_file()
-        contact_files()
+        cwd = os.getcwd()
+        log_folder = f"{cwd}/logs"
+        set_logger(log_folder)
+
+        pdf_folder = f"{cwd}/data/"
+        destination_folder = f"{cwd}/txt"
+
+        pdf_list = list_all_pdfs(pdf_folder)
+        for file in pdf_list:
+            text = extract_text(file)
+            write_file(text, destination_folder)
+        concatenate_files(destination_folder)
         return 0
     except Exception as e:
         print(str(e))
         return 1
+
+
+if __name__ == "__main__":
+    main()
