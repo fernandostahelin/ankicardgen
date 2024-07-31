@@ -92,18 +92,19 @@ def extract_text(pdf_file):
                 for block in text_blocks:
                     for line in block["lines"]:
                         for span in line["spans"]:
+                            text = span.get("text")
                             style = flags_decomposer(span["flags"])
                             #print(span)
-                            if span.get("text") == ' ':
-                               print("------------------------!")
+                            if text == ' ':
+                               print("!------------------------!")
                             else:
-                                print("frase: " + span.get("text") +  "style: " + style)
+                                print("FRASE: " + text + "| ")
                            
 
         logger.info("Text extracted. Closing file...")
         return extracted_text
     except Exception as e:
-        logger.error("Error {} during text extraction.".format(str(e)))
+        logger.error("Error {} during text extraction.".format( str(e)))
 
 
 def write_file(text, folder):
@@ -164,8 +165,8 @@ def main():
         pdf_list = list_all_pdfs(pdf_folder)
         for file in pdf_list:
             text = extract_text(file)
-            write_file(text, destination_folder)
-        concatenate_files(destination_folder)
+            #write_file(text, destination_folder)
+        #concatenate_files(destination_folder)
         return 0
     except Exception as e:
         print(str(e))
